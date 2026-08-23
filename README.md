@@ -79,3 +79,5 @@ pip install -e .
 | W001 | whitespace between the header name and the colon |
 | W002 | header repeated where repetition isn't expected |
 | W003 | obsolete line-folding continuation |
+| E003 | Content-Length and Transfer-Encoding both present (request smuggling) |
+| E004 | Content-Length repeated with disagreeing values |

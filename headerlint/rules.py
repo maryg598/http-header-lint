@@ -76,12 +76,42 @@ def check_line_folding(headers: List[ParsedHeader]) -> Iterable[Finding]:
             )
 
 
+def check_conflicting_framing(headers: List[ParsedHeader]) -> Iterable[Finding]:
+    # Content-Length and Transfer-Encoding disagreeing about message
+    # framing is the classic CL.TE / TE.CL request smuggling setup:
+    # RFC 7230 3.3.3 says a recipient must treat this as an error rather
+    # than guess which one to believe.
+    content_length = [
+        h for h in headers if not h.malformed and h.name.strip().lower() == "content-length"
+    ]
+    transfer_encoding = [
+        h for h in headers if not h.malformed and h.name.strip().lower() == "transfer-encoding"
+    ]
+
+    if content_length and transfer_encoding:
+        for h in content_length + transfer_encoding:
+            yield Finding(
+                h.line, "error", "E003",
+                "Content-Length and Transfer-Encoding both present; RFC 7230 3.3.3 "
+                "requires rejecting this rather than picking one (CL.TE / TE.CL smuggling)",
+            )
+
+    if len(content_length) > 1 and len({h.value.strip() for h in content_length}) > 1:
+        for h in content_length:
+            yield Finding(
+                h.line, "error", "E004",
+                f"Content-Length values disagree ({h.value.strip()!r} here); RFC 7230 "
+                "3.3.3 requires the message be rejected rather than framed by either value",
+            )
+
+
 RULES = [
     check_malformed,
     check_empty_name,
     check_whitespace_before_colon,
     check_duplicates,
     check_line_folding,
+    check_conflicting_framing,
 ]
 
 
