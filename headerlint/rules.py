@@ -105,6 +105,29 @@ def check_conflicting_framing(headers: List[ParsedHeader]) -> Iterable[Finding]:
             )
 
 
+# header name -> (code, description) for security headers whose mere
+# absence is worth flagging on a response.
+SECURITY_HEADERS = {
+    "strict-transport-security": ("W004", "HSTS"),
+    "content-security-policy": ("W005", "CSP"),
+    "x-content-type-options": ("W006", "X-Content-Type-Options"),
+}
+
+
+def check_security_headers(headers: List[ParsedHeader], message_type: str) -> Iterable[Finding]:
+    # Presence checks only mean something for a response: a request
+    # dump has no business setting these, so flagging it there is noise.
+    if message_type == "request":
+        return
+
+    present = {
+        h.name.strip().lower() for h in headers if not h.malformed and h.name.strip()
+    }
+    for key, (code, label) in SECURITY_HEADERS.items():
+        if key not in present:
+            yield Finding(0, "warning", code, f"{label} header is missing")
+
+
 RULES = [
     check_malformed,
     check_empty_name,
@@ -115,9 +138,10 @@ RULES = [
 ]
 
 
-def run_rules(headers: List[ParsedHeader]) -> List[Finding]:
+def run_rules(headers: List[ParsedHeader], message_type: str = "unknown") -> List[Finding]:
     findings: List[Finding] = []
     for rule in RULES:
         findings.extend(rule(headers))
+    findings.extend(check_security_headers(headers, message_type))
     findings.sort(key=lambda f: (f.line, f.code))
     return findings

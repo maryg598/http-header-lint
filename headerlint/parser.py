@@ -12,6 +12,8 @@ import re
 # Matches a request line ("GET /path HTTP/1.1") or a status line
 # ("HTTP/1.1 200 OK"). Only checked against the first line, so a stray
 # header that happens to look like this later on is left alone.
+REQUEST_LINE_RE = re.compile(r"^[A-Za-z]+ \S+ HTTP/\d\.\d\s*$")
+STATUS_LINE_RE = re.compile(r"^HTTP/\d\.\d \d{3}(?: .*)?\s*$")
 START_LINE_RE = re.compile(
     r"^(?:[A-Za-z]+ \S+ HTTP/\d\.\d|HTTP/\d\.\d \d{3}(?: .*)?)\s*$"
 )
@@ -25,6 +27,26 @@ class ParsedHeader:
     raw: str
     malformed: bool = False
     folded_lines: List[int] = field(default_factory=list)
+
+
+def detect_message_type(text: str) -> str:
+    """Classify the dump's first line as a request, a response, or neither.
+
+    Security-header presence checks only make sense for responses, so
+    callers use this to skip them on request dumps. A bare header block
+    with no start line at all returns "unknown" and is treated like a
+    response, since that's the common case (curl -I output, devtools
+    copies) for this tool.
+    """
+    for line in text.splitlines():
+        if line.strip() == "":
+            return "unknown"
+        if REQUEST_LINE_RE.match(line):
+            return "request"
+        if STATUS_LINE_RE.match(line):
+            return "response"
+        return "unknown"
+    return "unknown"
 
 
 def parse_headers(text: str) -> List[ParsedHeader]:

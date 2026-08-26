@@ -81,3 +81,13 @@ pip install -e .
 | W003 | obsolete line-folding continuation |
 | E003 | Content-Length and Transfer-Encoding both present (request smuggling) |
 | E004 | Content-Length repeated with disagreeing values |
+| W004 | Strict-Transport-Security header is missing |
+| W005 | Content-Security-Policy header is missing |
+| W006 | X-Content-Type-Options header is missing |
+
+W004-W006 only fire on a response (a status line up front, or no
+start line at all, which is the common case for a bare header dump).
+A request dump - detected from a request line like `GET /path
+HTTP/1.1` - skips them, since a request has no reason to carry those
+headers. They report on line 0 since they're about something absent
+rather than a specific line.
