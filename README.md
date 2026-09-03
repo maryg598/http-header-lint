@@ -56,6 +56,21 @@ deprecated because it's been a source of smuggling bugs.
 Exit status is 0 if nothing at error severity was found, 1 if an error
 finding turned up, and 2 if a file couldn't be read at all.
 
+Pass `--format json` to get machine-readable output instead - one JSON
+array with one object per file, each holding that file's findings:
+
+```
+$ headerlint --format json response.txt
+[
+  {
+    "file": "response.txt",
+    "findings": [
+      {"line": 3, "severity": "warning", "code": "W002", "message": "..."}
+    ]
+  }
+]
+```
+
 ## Install
 
 No dependencies beyond the standard library. Run directly:
