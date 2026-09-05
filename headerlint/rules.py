@@ -105,6 +105,84 @@ def check_conflicting_framing(headers: List[ParsedHeader]) -> Iterable[Finding]:
             )
 
 
+# Canonical capitalization for headers that show up in practice. Header
+# names are case-insensitive per RFC 7230 3.2, so this is a style nit,
+# not a correctness one - but mixed case in logs and diffs makes it
+# easy to miss that two headers are actually the same one.
+CANONICAL_HEADER_NAMES = {
+    "accept": "Accept",
+    "accept-encoding": "Accept-Encoding",
+    "accept-language": "Accept-Language",
+    "accept-ranges": "Accept-Ranges",
+    "age": "Age",
+    "allow": "Allow",
+    "authorization": "Authorization",
+    "cache-control": "Cache-Control",
+    "connection": "Connection",
+    "content-disposition": "Content-Disposition",
+    "content-encoding": "Content-Encoding",
+    "content-length": "Content-Length",
+    "content-md5": "Content-MD5",
+    "content-security-policy": "Content-Security-Policy",
+    "content-type": "Content-Type",
+    "cookie": "Cookie",
+    "date": "Date",
+    "dnt": "DNT",
+    "etag": "ETag",
+    "expires": "Expires",
+    "host": "Host",
+    "if-match": "If-Match",
+    "if-modified-since": "If-Modified-Since",
+    "if-none-match": "If-None-Match",
+    "if-range": "If-Range",
+    "if-unmodified-since": "If-Unmodified-Since",
+    "last-modified": "Last-Modified",
+    "link": "Link",
+    "location": "Location",
+    "origin": "Origin",
+    "pragma": "Pragma",
+    "proxy-authenticate": "Proxy-Authenticate",
+    "proxy-authorization": "Proxy-Authorization",
+    "referer": "Referer",
+    "retry-after": "Retry-After",
+    "server": "Server",
+    "set-cookie": "Set-Cookie",
+    "strict-transport-security": "Strict-Transport-Security",
+    "te": "TE",
+    "transfer-encoding": "Transfer-Encoding",
+    "upgrade": "Upgrade",
+    "upgrade-insecure-requests": "Upgrade-Insecure-Requests",
+    "user-agent": "User-Agent",
+    "vary": "Vary",
+    "via": "Via",
+    "warning": "Warning",
+    "www-authenticate": "WWW-Authenticate",
+    "x-content-type-options": "X-Content-Type-Options",
+    "x-forwarded-for": "X-Forwarded-For",
+    "x-forwarded-host": "X-Forwarded-Host",
+    "x-forwarded-proto": "X-Forwarded-Proto",
+    "x-frame-options": "X-Frame-Options",
+    "x-request-id": "X-Request-Id",
+    "x-xss-protection": "X-XSS-Protection",
+}
+
+
+def check_header_case(headers: List[ParsedHeader]) -> Iterable[Finding]:
+    # Only checked against known header names; a custom header with
+    # unusual casing (X-MyApp-Token vs x-myapp-token) isn't wrong, so
+    # guessing a "canonical" form for it would just be noise.
+    for h in headers:
+        if h.malformed or not h.name.strip():
+            continue
+        name = h.name.strip()
+        canonical = CANONICAL_HEADER_NAMES.get(name.lower())
+        if canonical is not None and name != canonical:
+            yield Finding(
+                h.line, "warning", "W007",
+                f"{name!r} should be written as {canonical!r}",
+            )
+
+
 # header name -> (code, description) for security headers whose mere
 # absence is worth flagging on a response.
 SECURITY_HEADERS = {
@@ -135,6 +213,7 @@ RULES = [
     check_duplicates,
     check_line_folding,
     check_conflicting_framing,
+    check_header_case,
 ]
 
 

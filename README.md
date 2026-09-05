@@ -99,6 +99,7 @@ pip install -e .
 | W004 | Strict-Transport-Security header is missing |
 | W005 | Content-Security-Policy header is missing |
 | W006 | X-Content-Type-Options header is missing |
+| W007 | header name doesn't match its canonical capitalization |
 
 W004-W006 only fire on a response (a status line up front, or no
 start line at all, which is the common case for a bare header dump).
@@ -106,3 +107,9 @@ A request dump - detected from a request line like `GET /path
 HTTP/1.1` - skips them, since a request has no reason to carry those
 headers. They report on line 0 since they're about something absent
 rather than a specific line.
+
+W007 checks a header's capitalization against a list of well-known
+header names (`content-type` -> `Content-Type`, `etag` -> `ETag`, and
+so on). It only fires when the header is recognized, so a custom
+header like `X-MyApp-Token` is never flagged just for using a
+capitalization the tool hasn't seen before.
